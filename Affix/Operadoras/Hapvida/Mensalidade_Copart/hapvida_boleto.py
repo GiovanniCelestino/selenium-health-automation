@@ -18,6 +18,7 @@ from selenium.webdriver.edge.options import Options
 print('===== BEM VINDO AO GSYSTEM =====:\n')
 print('===== BAIXA REFERENTE AOS BOLETOS HAPVIDA (AFFIX) =====:\n')
 print('Responsável: Giovanni.Souza')
+input('CONFIRMAÇAO DE SENHA')
 
 print("INFORME A DATA DE VENCIMENTO DESEJADA SEGUIDA DO DIA, MES E ANO:\n")
 dia_venc = input('Dia(DD): ')
@@ -28,8 +29,6 @@ ano_venc = input('Ano(AAAA): ')
 data_completa_venc = f"{dia_venc}/{mes_venc}/{ano_venc}"
 
 #lista de contratos
-
-
 lista_contratos = [
     "08GDV", "08GE1", "08GEU", "08GLQ", "08GMG", "0CY42",
     "08GFE", "08GFK", "08GFH", "08J1K", "08GEN", "08GF2",
@@ -116,7 +115,7 @@ for contrato in lista_contratos:
 
     #lista de contratos
 
-    realizarLogin(navegador, contrato, tipo_arquivo)
+    realizarLogin(navegador, contrato, tipo_arquivo, "nao contem")
 
 
 
