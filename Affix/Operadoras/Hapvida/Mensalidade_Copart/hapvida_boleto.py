@@ -9,7 +9,8 @@ from Senhas.login_hapvida import realizarLogin
 import time
 import json
 import shutil
-
+#Caso Edge:
+from selenium.webdriver.edge.options import Options
 
 
 
@@ -27,19 +28,23 @@ ano_venc = input('Ano(AAAA): ')
 data_completa_venc = f"{dia_venc}/{mes_venc}/{ano_venc}"
 
 #lista de contratos
+
+
 lista_contratos = [
-    "07ND9", "07NDI", "07PFA", "07X23", "07X2S", "07X2C", "07X1Y", "07YNH",
-    "07PH4", "07PFG", "07NDP", "07PHA", "07PHG", "07ND6", "07PHM", "07NDC",
-    "07PFJ", "07PF4", "07YN2", "0CWY3", "08XJ0", "08XJM", "08YVL", "0CP9J",
-    "08Z4M", "08Z4T", "0DY6X", "08Z4W", "08YHD", "0817C", "0814V", "0814Z",
-    "0815C", "0818G", "08KM5", "08JZS", "0CMU1", "08JZP", "08NAX", "08NB4",
-    "08NAW", "08NB1", "08NAS", "0CY3W", "0CY3M", "08IMZ", "08IUV", "07YPK",
-    "07NED", "07NDX", "07PGK", "07PGR", "07PIF", "07PI3", "07NE7", "07NDV",
-    "07PIL", "07PI9", "07X3D", "07PGU", "07YQ2", "07PGE", "07X31", "07X3J",
-    "07X3T", "07NE1", "08YHG", "08XJ3", "08XJT", "08YVP", "0817F", "0815I",
-    "0815L", "0815P", "0818J", "08KM8", "08K05", "08K02", "0CMU7", "08IN2",
-    "08IUX"
+    "08GDV", "08GE1", "08GEU", "08GLQ", "08GMG", "0CY42",
+    "08GFE", "08GFK", "08GFH", "08J1K", "08GEN", "08GF2",
+    "08J1N", "08GFU",
+    "07RHT", "07RG4", "07RG7", "07RGA", "07RGD", "07RGG",
+    "07RI2", "07RIE",
+    "07S56", "07S59", "07S5S", "07SKF", "07SUN", "07SVC",
+    "07SVV", "07SW4",
+    "080X8", "080XB", "080XE",
+    "0835Z", "0886T", "0887Q",
+    "08GE7", "08GED", "08GF8", "08GLU", "08GMJ",
+    "08GFR", "08GFY"
 ]
+
+
 for contrato in lista_contratos:
 
     # CONFIGURACOES PADROES:
@@ -49,9 +54,15 @@ for contrato in lista_contratos:
     # Identificacao de pastas na arquitetura do projeto (includes)
     sys.path.insert(0, caminho_absoluto)
 
+    
     # CONFIGURAÇÃO DE IMPRESSÃO (Obrigatório vir antes de iniciar o Chrome)
-    chrome_options = Options()
-    chrome_options.add_argument('--kiosk-printing') # Ativa a impressão sem perguntas
+     #PREFERENCIA NAVEGADOR
+    #chrome_options = Options()
+    #chrome_options.add_argument('--kiosk-printing') # Ativa a impressão sem perguntas
+    edge_options = Options()
+    edge_options.add_argument("--kiosk-printing")
+    
+    
 
     # Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
     pasta_download = os.path.join(os.getcwd(), "Download")
@@ -65,16 +76,24 @@ for contrato in lista_contratos:
         }),
         "savefile.default_directory": pasta_download
     }
-    chrome_options.add_experimental_option('prefs', prefs)
+    
+    
+    #PREFERENCIA NAVEGADOR
+    #chrome_options.add_experimental_option('prefs', prefs)
+    edge_options.add_experimental_option('prefs', prefs)
+    
 
     # INSTANCIANDO O NAVEGADOR COM AS OPÇÕES
-    navegador = webdriver.Chrome(options=chrome_options)
+     #PREFERENCIA NAVEGADOR
+    #navegador = webdriver.Chrome(options=chrome_options)
+    navegador = webdriver.Edge(options=edge_options)
 
 
 
     # DEFININDO VARIAVEIS
     tipo_contrato = ""
     pCodigo = contrato
+    tipo_arquivo = "hapvida_boleto"
 
 
 
@@ -97,7 +116,7 @@ for contrato in lista_contratos:
 
     #lista de contratos
 
-    realizarLogin(navegador, contrato)
+    realizarLogin(navegador, contrato, tipo_arquivo)
 
 
 
@@ -147,7 +166,7 @@ for contrato in lista_contratos:
     # Se houver pelo menos um PDF, renomeia o primeiro
     if pdfs:
         arquivo_antigo = os.path.join(pasta_download, pdfs[0])
-        arquivo_novo = os.path.join(pasta_download, f"{dia_venc}.{mes_venc}.{ano_venc}-AFFIX HAPVIDA {pCodigo} Boleto {tipo_contrato}.pdf")
+        arquivo_novo = os.path.join(pasta_download, f"{dia_venc}.{mes_venc}.{ano_venc}-ALTER HAPVIDA {pCodigo} Boleto {tipo_contrato}.pdf")
         os.rename(arquivo_antigo, arquivo_novo)
         #print("Arquivo renomeado com sucesso!")
     else:
