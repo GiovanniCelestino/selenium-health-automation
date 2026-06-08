@@ -1,3 +1,8 @@
 Unused/
 venv/
 05_04_2026/
+Bots
+__pycache__/
+*.pyc
+senhas_operadoras.xlsx
+OBSERVACOES.txt
