@@ -13,6 +13,7 @@ import openpyxl
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 #Caso Edge:
 from selenium.webdriver.edge.options import Options
 
@@ -180,14 +181,25 @@ for row in range(1, aba_hapvida.max_row + 1):
         except Exception as e:
             print(f"Erro durante a execução: {e}")
             
-
-        linhas = navegador.find_elements(By.XPATH, "//span")
+        wait = WebDriverWait(navegador, 10)
+        linhas = wait.until(
+            EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
+        )
         for linha in linhas:
-            texto_da_linha = linha.text
+            
+            try: 
+                valida_tipo_contrato = linha.find_element(
+                By.XPATH, "./div[2][contains(string(), 'Coparticipação')]"
+                )
 
-            if data_completa_venc in texto_da_linha and tipo_contrato in texto_da_linha:
+                valida_venc_contrato = linha.find_element(
+                By.XPATH, f"./div[3][contains(string(), '{data_completa_venc}')]"
+                )
 
-                linha.find_element(By.XPATH, ".//button")
+                print(valida_tipo_contrato.text)
+                print(valida_venc_contrato.text)
+
+                """linha.find_element(By.XPATH, ".//button")
                 # Seleciona o boleto de acordo com vencimento
                 time.sleep(4) # Espera carregar após login
 
@@ -233,5 +245,18 @@ for row in range(1, aba_hapvida.max_row + 1):
                 print(f"BAIXADO: {arquivo_novo}")
                 # Fim da operacao
                 navegador.quit()
-                time.sleep(2)
+                time.sleep(2)"""
+
+
+
+            except NoSuchElementException:
+                continue
+            
+            
+
+
+
+
+
+
                 
