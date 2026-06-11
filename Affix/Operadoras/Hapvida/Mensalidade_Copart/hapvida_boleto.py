@@ -16,6 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 #Caso Edge:
 from selenium.webdriver.edge.options import Options
+from pathlib import Path
 
 
 
@@ -36,13 +37,13 @@ elif opc_opr == "2":
 
 
 opc_tipo_contrato = input("INFORME O TIPO DE CONTRATO:\n[1]MENSALIDADE\n[2]COPART\n")
-if opc_tipo_contrato == "1":
+if opc_tipo_contrato == "2":
     #O que vai na descrição
     tipo_contrato = ""
     #O que aparece no Xpath
     tipo_contrato_site = "Coparticipação"
 
-elif opc_tipo_contrato == "2":
+elif opc_tipo_contrato == "1":
     tipo_contrato = "MENSALIDADE"
     tipo_contrato_site = "Mensalidade" 
 
@@ -67,7 +68,7 @@ data_completa_venc = f"{dia_venc}/{mes_venc}/{ano_venc}"
 # Carregr arquivo
 caminho_arquivo = 'Senhas/senhas_operadoras.xlsx'
 wb = openpyxl.load_workbook(caminho_arquivo)
-aba_hapvida = wb["teste"]
+aba_hapvida = wb[aba_excel]
 
 for row in range(1, aba_hapvida.max_row + 1):
     contrato = str(aba_hapvida.cell(row=row, column=1).value)
@@ -167,7 +168,7 @@ for row in range(1, aba_hapvida.max_row + 1):
         
             time.sleep(2)
             
-            # 3. Localizar o primeiro checkbox
+            """# 3. Localizar o primeiro checkbox
             xpath_checkbox_mestre = "//div[contains(@class, 'tableHeaderCell')]//button[@role='checkbox']"
             
             checkbox_pai = WebDriverWait(navegador, 15).until(
@@ -175,21 +176,31 @@ for row in range(1, aba_hapvida.max_row + 1):
             )
             
             # 4. Forçar com javascript o clique
-            navegador.execute_script("arguments[0].click();", checkbox_pai)
+            navegador.execute_script("arguments[0].click();", checkbox_pai)"""
 
 
         except Exception as e:
             print(f"Erro durante a execução: {e}")
             
-        wait = WebDriverWait(navegador, 10)
+
+        # Checa se existe alguma fatura, caso contrário, retorna ao for
+        lista_avisos = navegador.find_elements(By.XPATH, "//h2[contains(string(), 'Nenhuma fatura encontrada')]")
+        if len(lista_avisos) > 0:
+            print(f'{contrato} não consta na operadora!')
+            navegador.quit()
+            continue
+
+        wait = WebDriverWait(navegador, 20)
         linhas = wait.until(
             EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
         )
+        
+        
         for linha in linhas:
             
             try: 
                 valida_tipo_contrato = linha.find_element(
-                By.XPATH, "./div[2][contains(string(), 'Coparticipação')]"
+                By.XPATH, f"./div[2][contains(string(), '{tipo_contrato_site}')]"
                 )
 
                 valida_venc_contrato = linha.find_element(
@@ -199,22 +210,31 @@ for row in range(1, aba_hapvida.max_row + 1):
                 print(valida_tipo_contrato.text)
                 print(valida_venc_contrato.text)
 
-                """linha.find_element(By.XPATH, ".//button")
-                # Seleciona o boleto de acordo com vencimento
-                time.sleep(4) # Espera carregar após login
-
-
-                # Muda para a aba onde o PDF é exibido (Aba 1)
                 time.sleep(3)
-                aba_final = navegador.window_handles
-                navegador.switch_to.window(aba_final[1])
+                abas_antigas = navegador.window_handles
+                linha.find_element(By.XPATH, ".//button[@type='button']").click()
+
+                time.sleep(3)
+
+                # Aba do boleto
+                # Guarda todas as abas abertas antes do clique
+                
+                wait.until(EC.new_window_is_opened(abas_antigas))
+     
+                todas_abas = navegador.window_handles
+                navegador.switch_to.window(todas_abas[-1])
 
                 # --- COMANDO FINAL PARA SALVAR ---
+
+                # Limpa qualquer arquivo que esteja na pasta download
+                for f in os.listdir(pasta_download):
+                    caminho_completo = os.path.join(pasta_download, f)
+                    if os.path.isfile(caminho_completo):
+                         os.remove(caminho_completo)
                 # Como foi ativado o Modo Kiosk, ele salva o PDF na pasta sem abrir a janela de impressão
+                
+                navegador.execute_script("window.print();")   
                 time.sleep(2)
-                navegador.execute_script("window.print();")
-
-
                 # --- RENOMEANDO ARQUIVO DA PASTA DOWNLOAD ENCAMINHANDO PARA PASTA DA OPERADORA ---
 
                 # Lista todos os arquivos PDF na pasta
@@ -244,9 +264,11 @@ for row in range(1, aba_hapvida.max_row + 1):
                 shutil.move(arquivo_novo, pasta_destino)
                 print(f"BAIXADO: {arquivo_novo}")
                 # Fim da operacao
+                navegador.close()
+                time.sleep(1)
+                navegador.switch_to.window(todas_abas[0])
                 navegador.quit()
-                time.sleep(2)"""
-
+                break
 
 
             except NoSuchElementException:
