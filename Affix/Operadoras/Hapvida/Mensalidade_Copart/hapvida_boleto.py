@@ -42,10 +42,12 @@ if opc_tipo_contrato == "2":
     tipo_contrato = ""
     #O que aparece no Xpath
     tipo_contrato_site = "Coparticipação"
+    tipo_contrato_cond = "S"
 
 elif opc_tipo_contrato == "1":
     tipo_contrato = "MENSALIDADE"
     tipo_contrato_site = "Mensalidade" 
+    tipo_contrato_cond = "N"
 
 
 print("INFORME A DATA DE VENCIMENTO DESEJADA SEGUIDA DO DIA, MES E ANO:\n")
@@ -71,19 +73,23 @@ wb = openpyxl.load_workbook(caminho_arquivo)
 aba_hapvida = wb[aba_excel]
 
 for row in range(1, aba_hapvida.max_row + 1):
+    
     contrato = str(aba_hapvida.cell(row=row, column=1).value)
+    
     if len(str(aba_hapvida[f'G{row}'].value)) == 1:
         plan_venc = str(f"0{aba_hapvida[f'G{row}'].value}")
         plan_admn = str(aba_hapvida[f'C{row}'].value)
         plan_admn_edit = plan_admn.replace(" ", "")
+        plan_tipo_cont = str(aba_hapvida[f'F{row}'].value)
     else:
         #plan = planilha
         plan_venc = str(aba_hapvida[f'G{row}'].value)
         plan_admn = str(aba_hapvida[f'C{row}'].value)
         plan_admn_edit = plan_admn.replace(" ", "")
+        plan_tipo_cont = str(aba_hapvida[f'F{row}'].value)
 
-    if dia_venc == plan_venc and plan_admn_edit == operadora:
-
+    if dia_venc == plan_venc and plan_admn_edit == operadora and tipo_contrato_cond == plan_tipo_cont:
+        
 
 
         # CONFIGURACOES PADROES:
@@ -186,18 +192,21 @@ for row in range(1, aba_hapvida.max_row + 1):
         # Checa se existe alguma fatura, caso contrário, retorna ao for
         lista_avisos = navegador.find_elements(By.XPATH, "//h2[contains(string(), 'Nenhuma fatura encontrada')]")
         if len(lista_avisos) > 0:
-            print(f'{contrato} não consta na operadora!')
             navegador.quit()
+            print(f'{contrato} não consta na operadora!')
             continue
-
-        wait = WebDriverWait(navegador, 20)
+        
+        print(contrato)
+        wait = WebDriverWait(navegador, 60)
         linhas = wait.until(
             EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
         )
         
-        
+        print(f'QUANTIDADE DE LINHAS: {len(linhas)}')
+        cont = 0
         for linha in linhas:
-            
+            cont += 1
+            print(cont)
             try: 
                 valida_tipo_contrato = linha.find_element(
                 By.XPATH, f"./div[2][contains(string(), '{tipo_contrato_site}')]"
@@ -207,8 +216,6 @@ for row in range(1, aba_hapvida.max_row + 1):
                 By.XPATH, f"./div[3][contains(string(), '{data_completa_venc}')]"
                 )
 
-                print(valida_tipo_contrato.text)
-                print(valida_venc_contrato.text)
 
                 time.sleep(3)
                 abas_antigas = navegador.window_handles
@@ -253,7 +260,8 @@ for row in range(1, aba_hapvida.max_row + 1):
                     #print("Arquivo renomeado com sucesso!")
                 else:
                     print("Nenhum arquivo PDF encontrado.")
-                    exit()
+                    #exit()
+                    continue
 
 
                 # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
@@ -272,6 +280,8 @@ for row in range(1, aba_hapvida.max_row + 1):
 
 
             except NoSuchElementException:
+                if cont == len(linhas):
+                    navegador.quit()
                 continue
             
             
