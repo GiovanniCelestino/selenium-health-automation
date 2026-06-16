@@ -39,7 +39,7 @@ elif opc_opr == "2":
 opc_tipo_contrato = input("INFORME O TIPO DE CONTRATO:\n[1]MENSALIDADE\n[2]COPART\n")
 if opc_tipo_contrato == "2":
     #O que vai na descrição
-    tipo_contrato = ""
+    tipo_contrato = "COPART"
     #O que aparece no Xpath
     tipo_contrato_site = "Coparticipação"
     tipo_contrato_cond = "S"
@@ -57,14 +57,6 @@ ano_venc = input('Ano(AAAA): ')
 
 #formato data venc
 data_completa_venc = f"{dia_venc}/{mes_venc}/{ano_venc}"
-
-
-#lista de contratos
-"""lista_contratos = [
-    "BNIZZ",
-    "FYR8W",
-    "RT5QU"
-]"""
 
 
 # Carregr arquivo
@@ -89,200 +81,214 @@ for row in range(1, aba_hapvida.max_row + 1):
         plan_tipo_cont = str(aba_hapvida[f'F{row}'].value)
 
     if dia_venc == plan_venc and plan_admn_edit == operadora and tipo_contrato_cond == plan_tipo_cont:
-        
+        data_download = f"{dia_venc}.{mes_venc}.{ano_venc}"
+        #Verifica se existe o contrato na pasta
+        pasta_arquivos_baixados = os.path.join(os.getcwd(), f"Affix\\Operadoras\\Hapvida\\Mensalidade_Copart\\Hapvida Arquivo\\{dia_venc}_{mes_venc}_{ano_venc}")
 
-
-        # CONFIGURACOES PADROES:
-        # Ajuste de caminho para importar funções personalizadas
-        caminho_absoluto = os.path.abspath(os.curdir)
-
-        # Identificacao de pastas na arquitetura do projeto (includes)
-        sys.path.insert(0, caminho_absoluto)
-
-        
-        # CONFIGURAÇÃO DE IMPRESSÃO (Obrigatório vir antes de iniciar o Chrome)
-        #PREFERENCIA NAVEGADOR
-        #chrome_options = Options()
-        #chrome_options.add_argument('--kiosk-printing') # Ativa a impressão sem perguntas
-        edge_options = Options()
-        edge_options.add_argument("--kiosk-printing")
-        
-        
-
-        # Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
-        pasta_download = os.path.join(os.getcwd(), "Download")
-        os.makedirs(pasta_download, exist_ok=True)
-
-        prefs = {
-            "printing.print_preview_sticky_settings.appState": json.dumps({
-                "recentDestinations": [{"id": "Save as PDF", "origin": "local", "account": ""}],
-                "selectedDestinationId": "Save as PDF",
-                "version": 2
-            }),
-            "savefile.default_directory": pasta_download
-        }
-        
-        
-        #PREFERENCIA NAVEGADOR
-        #chrome_options.add_experimental_option('prefs', prefs)
-        edge_options.add_experimental_option('prefs', prefs)
-        
-
-        # INSTANCIANDO O NAVEGADOR COM AS OPÇÕES
-        #PREFERENCIA NAVEGADOR
-        #navegador = webdriver.Chrome(options=chrome_options)
-        navegador = webdriver.Edge(options=edge_options)
-
-
-
-        # DEFININDO VARIAVEIS
-        tipo_arquivo = "hapvida_boleto"
-
-
-
-        # FLUXO DE NAVEGACAO
-
-        # Acessar link boleto hapvida
-        navegador.get("https://webhap.hapvida.com.br/pls/webhap/webNewBoletoEmpresa.Login")
-
-        # Tempo para carregar a página
-        time.sleep(5)
-
-        # Fechar pop-up tela de login
-        botao = navegador.find_element(By.CLASS_NAME, "ui-button-text")
-        botao.click()
-
-        time.sleep(1)
-        navegador.maximize_window()
-
-        # REALIZA LOGIN USANDO FUNCAO DE FORA (realizarLogin())
-
-        #lista de contratos
-
-        realizarLogin(navegador, contrato, tipo_arquivo, "entidade", "cnpj")
-
-        try:
-            #Aguarda a tela do iframe entrar
-            iframe_faturas = WebDriverWait(navegador, 20).until(
-                EC.presence_of_element_located((By.TAG_NAME, "iframe"))
-            )
-            
-            # 2. Encontrou iframe, usar o switch_to.frame para acessá-lo
-            # para caso precisar sair do iframe: navegador.switch_to.default_content()
-            navegador.switch_to.frame(iframe_faturas)
-  
-        
-            time.sleep(2)
-            
-            """# 3. Localizar o primeiro checkbox
-            xpath_checkbox_mestre = "//div[contains(@class, 'tableHeaderCell')]//button[@role='checkbox']"
-            
-            checkbox_pai = WebDriverWait(navegador, 15).until(
-                EC.presence_of_element_located((By.XPATH, xpath_checkbox_mestre))
-            )
-            
-            # 4. Forçar com javascript o clique
-            navegador.execute_script("arguments[0].click();", checkbox_pai)"""
-
-
-        except Exception as e:
-            print(f"Erro durante a execução: {e}")
-            
-
-        # Checa se existe alguma fatura, caso contrário, retorna ao for
-        lista_avisos = navegador.find_elements(By.XPATH, "//h2[contains(string(), 'Nenhuma fatura encontrada')]")
-        if len(lista_avisos) > 0:
-            navegador.quit()
-            print(f'{contrato} não consta na operadora!')
-            continue
-        
-        print(contrato)
-        wait = WebDriverWait(navegador, 60)
-        linhas = wait.until(
-            EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
-        )
-        
-        print(f'QUANTIDADE DE LINHAS: {len(linhas)}')
-        cont = 0
-        for linha in linhas:
-            cont += 1
-            print(cont)
-            try: 
-                valida_tipo_contrato = linha.find_element(
-                By.XPATH, f"./div[2][contains(string(), '{tipo_contrato_site}')]"
-                )
-
-                valida_venc_contrato = linha.find_element(
-                By.XPATH, f"./div[3][contains(string(), '{data_completa_venc}')]"
-                )
-
-
-                time.sleep(3)
-                abas_antigas = navegador.window_handles
-                linha.find_element(By.XPATH, ".//button[@type='button']").click()
-
-                time.sleep(3)
-
-                # Aba do boleto
-                # Guarda todas as abas abertas antes do clique
-                
-                wait.until(EC.new_window_is_opened(abas_antigas))
-     
-                todas_abas = navegador.window_handles
-                navegador.switch_to.window(todas_abas[-1])
-
-                # --- COMANDO FINAL PARA SALVAR ---
-
-                # Limpa qualquer arquivo que esteja na pasta download
-                for f in os.listdir(pasta_download):
-                    caminho_completo = os.path.join(pasta_download, f)
-                    if os.path.isfile(caminho_completo):
-                         os.remove(caminho_completo)
-                # Como foi ativado o Modo Kiosk, ele salva o PDF na pasta sem abrir a janela de impressão
-                
-                navegador.execute_script("window.print();")   
-                time.sleep(2)
-                # --- RENOMEANDO ARQUIVO DA PASTA DOWNLOAD ENCAMINHANDO PARA PASTA DA OPERADORA ---
-
-                # Lista todos os arquivos PDF na pasta
-
-                pdfs = []
-
-                for f in os.listdir(pasta_download):
-                    if f.endswith(".pdf"):
-                        pdfs.append(f)
-
-                # Se houver pelo menos um PDF, renomeia o primeiro
-                if pdfs:
-                    arquivo_antigo = os.path.join(pasta_download, pdfs[0])
-                    arquivo_novo = os.path.join(pasta_download, f"{dia_venc}.{mes_venc}.{ano_venc}-{operadora} HAPVIDA {contrato} Boleto {tipo_contrato}.pdf")
-                    os.rename(arquivo_antigo, arquivo_novo)
-                    #print("Arquivo renomeado com sucesso!")
-                else:
-                    print("Nenhum arquivo PDF encontrado.")
-                    #exit()
-                    continue
-
-
-                # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
-                # Caso nao existir, cria
-                pasta_destino = os.path.join("Affix", "Operadoras", "Hapvida", "Mensalidade_Copart", "Hapvida Arquivo",f"{dia_venc}_{mes_venc}_{ano_venc}") 
-                os.makedirs(pasta_destino, exist_ok=True)
-
-                shutil.move(arquivo_novo, pasta_destino)
-                print(f"BAIXADO: {arquivo_novo}")
-                # Fim da operacao
-                navegador.close()
-                time.sleep(1)
-                navegador.switch_to.window(todas_abas[0])
-                navegador.quit()
+        #Checa se o contrato já foi baixado
+        for f in os.listdir(pasta_arquivos_baixados):
+            if data_download in f and contrato in f and tipo_contrato in f:
+                print(f'Contrato {contrato} já foi baixado.')
                 break
+        else: 
+
+            # CONFIGURACOES PADROES:
+            # Ajuste de caminho para importar funções personalizadas
+            caminho_absoluto = os.path.abspath(os.curdir)
+
+            # Identificacao de pastas na arquitetura do projeto (includes)
+            sys.path.insert(0, caminho_absoluto)
+
+            
+            # CONFIGURAÇÃO DE IMPRESSÃO (Obrigatório vir antes de iniciar o Chrome)
+            #PREFERENCIA NAVEGADOR
+            #chrome_options = Options()
+            #chrome_options.add_argument('--kiosk-printing') # Ativa a impressão sem perguntas
+            edge_options = Options()
+            edge_options.add_argument("--kiosk-printing")
+            
+            
+
+            # Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
+            pasta_download = os.path.join(os.getcwd(), "Download")
+            os.makedirs(pasta_download, exist_ok=True)
+
+            prefs = {
+                "printing.print_preview_sticky_settings.appState": json.dumps({
+                    "recentDestinations": [{"id": "Save as PDF", "origin": "local", "account": ""}],
+                    "selectedDestinationId": "Save as PDF",
+                    "version": 2
+                }),
+                "savefile.default_directory": pasta_download
+            }
+            
+            
+            #PREFERENCIA NAVEGADOR
+            #chrome_options.add_experimental_option('prefs', prefs)
+            edge_options.add_experimental_option('prefs', prefs)
+            
+
+            # INSTANCIANDO O NAVEGADOR COM AS OPÇÕES
+            #PREFERENCIA NAVEGADOR
+            #navegador = webdriver.Chrome(options=chrome_options)
+            navegador = webdriver.Edge(options=edge_options)
 
 
-            except NoSuchElementException:
-                if cont == len(linhas):
-                    navegador.quit()
+
+            # DEFININDO VARIAVEIS
+            tipo_arquivo = "hapvida_boleto"
+
+
+
+            # FLUXO DE NAVEGACAO
+
+            # Acessar link boleto hapvida
+            navegador.get("https://webhap.hapvida.com.br/pls/webhap/webNewBoletoEmpresa.Login")
+
+            # Tempo para carregar a página
+            time.sleep(5)
+
+            # Fechar pop-up tela de login
+            botao = navegador.find_element(By.CLASS_NAME, "ui-button-text")
+            botao.click()
+
+            time.sleep(1)
+            navegador.maximize_window()
+
+            # REALIZA LOGIN USANDO FUNCAO DE FORA (realizarLogin())
+
+            #lista de contratos
+
+            realizarLogin(navegador, contrato, tipo_arquivo, "entidade", "cnpj")
+
+            try:
+                #Aguarda a tela do iframe entrar
+                iframe_faturas = WebDriverWait(navegador, 20).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "iframe"))
+                )
+                
+                # 2. Encontrou iframe, usar o switch_to.frame para acessá-lo
+                # para caso precisar sair do iframe: navegador.switch_to.default_content()
+                navegador.switch_to.frame(iframe_faturas)
+    
+            
+                time.sleep(2)
+                
+                """# 3. Localizar o primeiro checkbox
+                xpath_checkbox_mestre = "//div[contains(@class, 'tableHeaderCell')]//button[@role='checkbox']"
+                
+                checkbox_pai = WebDriverWait(navegador, 15).until(
+                    EC.presence_of_element_located((By.XPATH, xpath_checkbox_mestre))
+                )
+                
+                # 4. Forçar com javascript o clique
+                navegador.execute_script("arguments[0].click();", checkbox_pai)"""
+
+
+            except Exception as e:
+                print(f"Erro durante a execução: {e}")
+                
+
+            # Checa se existe alguma fatura, caso contrário, retorna ao for
+            lista_avisos = navegador.find_elements(By.XPATH, "//h2[contains(string(), 'Nenhuma fatura encontrada')]")
+            if len(lista_avisos) > 0:
+                navegador.quit()
+                print(f'{contrato} não consta na operadora!')
                 continue
+            
+            print(contrato)
+            wait = WebDriverWait(navegador, 60)
+            linhas = wait.until(
+                EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
+            )
+            
+            print(f'QUANTIDADE DE LINHAS: {len(linhas)}')
+            cont = 0
+            for linha in linhas:
+                cont += 1
+                print(cont)
+                try: 
+                    valida_tipo_contrato = linha.find_element(
+                    By.XPATH, f"./div[2][contains(string(), '{tipo_contrato_site}')]"
+                    )
+
+                    valida_venc_contrato = linha.find_element(
+                    By.XPATH, f"./div[3][contains(string(), '{data_completa_venc}')]"
+                    )
+
+
+                    time.sleep(3)
+                    abas_antigas = navegador.window_handles
+                    
+                    wait_linha = WebDriverWait(linha, 60)
+                    botao_boleto =  wait_linha.until(
+                        #linha.find_element(By.XPATH, ".//button[@type='button']").click()
+                        EC.element_to_be_clickable((By.XPATH, ".//button[@type='button']"))
+                    )
+                    #Forçar click do botão
+                    navegador.execute_script("arguments[0].click();", botao_boleto)
+                    time.sleep(3)
+
+                    # Aba do boleto
+                    # Guarda todas as abas abertas antes do clique
+                    
+                    wait.until(EC.new_window_is_opened(abas_antigas))
+        
+                    todas_abas = navegador.window_handles
+                    navegador.switch_to.window(todas_abas[-1])
+
+                    # --- COMANDO FINAL PARA SALVAR ---
+
+                    # Limpa qualquer arquivo que esteja na pasta download
+                    for f in os.listdir(pasta_download):
+                        caminho_completo = os.path.join(pasta_download, f)
+                        if os.path.isfile(caminho_completo):
+                            os.remove(caminho_completo)
+                    # Como foi ativado o Modo Kiosk, ele salva o PDF na pasta sem abrir a janela de impressão
+                    
+                    navegador.execute_script("window.print();")   
+                    time.sleep(2)
+                    # --- RENOMEANDO ARQUIVO DA PASTA DOWNLOAD ENCAMINHANDO PARA PASTA DA OPERADORA ---
+
+                    # Lista todos os arquivos PDF na pasta
+
+                    pdfs = []
+
+                    for f in os.listdir(pasta_download):
+                        if f.endswith(".pdf"):
+                            pdfs.append(f)
+
+                    # Se houver pelo menos um PDF, renomeia o primeiro
+                    if pdfs:
+                        arquivo_antigo = os.path.join(pasta_download, pdfs[0])
+                        arquivo_novo = os.path.join(pasta_download, f"{dia_venc}.{mes_venc}.{ano_venc}-{operadora} HAPVIDA {contrato} Boleto {tipo_contrato}.pdf")
+                        os.rename(arquivo_antigo, arquivo_novo)
+                        #print("Arquivo renomeado com sucesso!")
+                    else:
+                        print("Nenhum arquivo PDF encontrado.")
+                        #exit()
+                        continue
+
+
+                    # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
+                    # Caso nao existir, cria
+                    pasta_destino = os.path.join("Affix", "Operadoras", "Hapvida", "Mensalidade_Copart", "Hapvida Arquivo",f"{dia_venc}_{mes_venc}_{ano_venc}") 
+                    os.makedirs(pasta_destino, exist_ok=True)
+
+                    shutil.move(arquivo_novo, pasta_destino)
+                    print(f"BAIXADO: {arquivo_novo}")
+                    # Fim da operacao
+                    navegador.close()
+                    time.sleep(1)
+                    navegador.switch_to.window(todas_abas[0])
+                    navegador.quit()
+                    break
+
+
+                except NoSuchElementException:
+                    if cont == len(linhas):
+                        navegador.quit()
+                    continue
             
             
 
