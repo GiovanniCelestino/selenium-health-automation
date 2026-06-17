@@ -5,7 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 caminho_absoluto = os.path.abspath(os.curdir)
 sys.path.insert(0, caminho_absoluto)
-from Senhas.login_hapvida import realizarLogin
+from senhas.login_hapvida import realizarLogin
 import time
 import json
 import shutil
@@ -17,6 +17,7 @@ from selenium.common.exceptions import NoSuchElementException
 #Caso Edge:
 from selenium.webdriver.edge.options import Options
 from pathlib import Path
+from selenium.common.exceptions import TimeoutException
 
 
 
@@ -24,7 +25,6 @@ from pathlib import Path
 print('===== BEM VINDO AO GSYSTEM =====:\n')
 print('===== BAIXA REFERENTE AOS BOLETOS HAPVIDA =====:\n')
 print('Responsável: Giovanni.Souza')
-input('CONFIRMAÇAO DE SENHA\n\n')
 
 opc_opr = input("INFORME A OPERADORA:\n[1]Affix\n[2]Alter\n")
 if opc_opr == "1":
@@ -60,7 +60,7 @@ data_completa_venc = f"{dia_venc}/{mes_venc}/{ano_venc}"
 
 
 # Carregr arquivo
-caminho_arquivo = 'Senhas/senhas_operadoras.xlsx'
+caminho_arquivo = 'senhas/senhas_operadoras.xlsx'
 wb = openpyxl.load_workbook(caminho_arquivo)
 aba_hapvida = wb[aba_excel]
 
@@ -83,7 +83,7 @@ for row in range(1, aba_hapvida.max_row + 1):
     if dia_venc == plan_venc and plan_admn_edit == operadora and tipo_contrato_cond == plan_tipo_cont:
         data_download = f"{dia_venc}.{mes_venc}.{ano_venc}"
         #Verifica se existe o contrato na pasta
-        pasta_arquivos_baixados = os.path.join(os.getcwd(), f"Affix\\Operadoras\\Hapvida\\Mensalidade_Copart\\Hapvida Arquivo\\{dia_venc}_{mes_venc}_{ano_venc}")
+        pasta_arquivos_baixados = os.path.join(os.getcwd(), f"dados\\arquivos_direcionados\\operadoras\\hapvida_arquivos\\affix_alter_arquivos\\{dia_venc}_{mes_venc}_{ano_venc}")
 
         #Checa se o contrato já foi baixado
         for f in os.listdir(pasta_arquivos_baixados):
@@ -109,8 +109,8 @@ for row in range(1, aba_hapvida.max_row + 1):
             
             
 
-            # Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
-            pasta_download = os.path.join(os.getcwd(), "Download")
+            # Configura o destino como "Salvar como PDF" e cria pasta "download_principa" nas pasta "dados" caso não exista
+            pasta_download = os.path.join(os.getcwd(), "dados","download_principal")
             os.makedirs(pasta_download, exist_ok=True)
 
             prefs = {
@@ -197,100 +197,105 @@ for row in range(1, aba_hapvida.max_row + 1):
                 continue
             
             print(contrato)
-            wait = WebDriverWait(navegador, 60)
-            linhas = wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
-            )
             
-            print(f'QUANTIDADE DE LINHAS: {len(linhas)}')
-            cont = 0
-            for linha in linhas:
-                cont += 1
-                print(cont)
-                try: 
-                    valida_tipo_contrato = linha.find_element(
-                    By.XPATH, f"./div[2][contains(string(), '{tipo_contrato_site}')]"
-                    )
 
-                    valida_venc_contrato = linha.find_element(
-                    By.XPATH, f"./div[3][contains(string(), '{data_completa_venc}')]"
-                    )
+            try:
+                wait = WebDriverWait(navegador, 60)
+                linhas = wait.until(
+                    EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, '__tableRow')]"))
+                )
+                
+                print(f'QUANTIDADE DE LINHAS: {len(linhas)}')
+                cont = 0
+                for linha in linhas:
+                    cont += 1
+                    print(cont)
+                    try: 
+                        valida_tipo_contrato = linha.find_element(
+                        By.XPATH, f"./div[2][contains(string(), '{tipo_contrato_site}')]"
+                        )
 
-
-                    time.sleep(3)
-                    abas_antigas = navegador.window_handles
-                    
-                    wait_linha = WebDriverWait(linha, 60)
-                    botao_boleto =  wait_linha.until(
-                        #linha.find_element(By.XPATH, ".//button[@type='button']").click()
-                        EC.element_to_be_clickable((By.XPATH, ".//button[@type='button']"))
-                    )
-                    #Forçar click do botão
-                    navegador.execute_script("arguments[0].click();", botao_boleto)
-                    time.sleep(3)
-
-                    # Aba do boleto
-                    # Guarda todas as abas abertas antes do clique
-                    
-                    wait.until(EC.new_window_is_opened(abas_antigas))
-        
-                    todas_abas = navegador.window_handles
-                    navegador.switch_to.window(todas_abas[-1])
-
-                    # --- COMANDO FINAL PARA SALVAR ---
-
-                    # Limpa qualquer arquivo que esteja na pasta download
-                    for f in os.listdir(pasta_download):
-                        caminho_completo = os.path.join(pasta_download, f)
-                        if os.path.isfile(caminho_completo):
-                            os.remove(caminho_completo)
-                    # Como foi ativado o Modo Kiosk, ele salva o PDF na pasta sem abrir a janela de impressão
-                    
-                    navegador.execute_script("window.print();")   
-                    time.sleep(2)
-                    # --- RENOMEANDO ARQUIVO DA PASTA DOWNLOAD ENCAMINHANDO PARA PASTA DA OPERADORA ---
-
-                    # Lista todos os arquivos PDF na pasta
-
-                    pdfs = []
-
-                    for f in os.listdir(pasta_download):
-                        if f.endswith(".pdf"):
-                            pdfs.append(f)
-
-                    # Se houver pelo menos um PDF, renomeia o primeiro
-                    if pdfs:
-                        arquivo_antigo = os.path.join(pasta_download, pdfs[0])
-                        arquivo_novo = os.path.join(pasta_download, f"{dia_venc}.{mes_venc}.{ano_venc}-{operadora} HAPVIDA {contrato} Boleto {tipo_contrato}.pdf")
-                        os.rename(arquivo_antigo, arquivo_novo)
-                        #print("Arquivo renomeado com sucesso!")
-                    else:
-                        print("Nenhum arquivo PDF encontrado.")
-                        #exit()
-                        continue
+                        valida_venc_contrato = linha.find_element(
+                        By.XPATH, f"./div[3][contains(string(), '{data_completa_venc}')]"
+                        )
 
 
-                    # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
-                    # Caso nao existir, cria
-                    pasta_destino = os.path.join("Affix", "Operadoras", "Hapvida", "Mensalidade_Copart", "Hapvida Arquivo",f"{dia_venc}_{mes_venc}_{ano_venc}") 
-                    os.makedirs(pasta_destino, exist_ok=True)
+                        time.sleep(3)
+                        abas_antigas = navegador.window_handles
+                        
+                        wait_linha = WebDriverWait(linha, 60)
+                        botao_boleto =  wait_linha.until(
+                            #linha.find_element(By.XPATH, ".//button[@type='button']").click()
+                            EC.element_to_be_clickable((By.XPATH, ".//button[@type='button']"))
+                        )
+                        #Forçar click do botão
+                        navegador.execute_script("arguments[0].click();", botao_boleto)
+                        time.sleep(3)
 
-                    shutil.move(arquivo_novo, pasta_destino)
-                    print(f"BAIXADO: {arquivo_novo}")
-                    # Fim da operacao
-                    navegador.close()
-                    time.sleep(1)
-                    navegador.switch_to.window(todas_abas[0])
-                    navegador.quit()
-                    break
+                        # Aba do boleto
+                        # Guarda todas as abas abertas antes do clique
+                        
+                        wait.until(EC.new_window_is_opened(abas_antigas))
+            
+                        todas_abas = navegador.window_handles
+                        navegador.switch_to.window(todas_abas[-1])
+
+                        # --- COMANDO FINAL PARA SALVAR ---
+
+                        # Limpa qualquer arquivo que esteja na pasta download_principal
+                        for f in os.listdir(pasta_download):
+                            caminho_completo = os.path.join(pasta_download, f)
+                            if os.path.isfile(caminho_completo):
+                                os.remove(caminho_completo)
+                        # Como foi ativado o Modo Kiosk, ele salva o PDF na pasta sem abrir a janela de impressão
+                        
+                        navegador.execute_script("window.print();")   
+                        time.sleep(2)
+                        # --- RENOMEANDO ARQUIVO DA PASTA DOWNLOAD ENCAMINHANDO PARA ESTRUTURA DE PASTAS ARQUIVOS_DIRECIONADOS ---
+
+                        # Lista todos os arquivos PDF na pasta
+
+                        pdfs = []
+
+                        for f in os.listdir(pasta_download):
+                            if f.endswith(".pdf"):
+                                pdfs.append(f)
+
+                        # Se houver pelo menos um PDF, renomeia o primeiro
+                        if pdfs:
+                            arquivo_antigo = os.path.join(pasta_download, pdfs[0])
+                            arquivo_novo = os.path.join(pasta_download, f"{dia_venc}.{mes_venc}.{ano_venc}-{operadora} HAPVIDA {contrato} Boleto {tipo_contrato}.pdf")
+                            os.rename(arquivo_antigo, arquivo_novo)
+                            #print("Arquivo renomeado com sucesso!")
+                        else:
+                            print("Nenhum arquivo PDF encontrado.")
+                            #exit()
+                            continue
 
 
-                except NoSuchElementException:
-                    if cont == len(linhas):
+                        # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
+                        # Caso nao existir, cria
+                        pasta_destino = os.path.join("dados", "arquivos_direcionados", "operadoras", "hapvida_arquivos", "affix_alter_arquivos",f"{dia_venc}_{mes_venc}_{ano_venc}") 
+                        os.makedirs(pasta_destino, exist_ok=True)
+
+                        shutil.move(arquivo_novo, pasta_destino)
+                        print(f"BAIXADO: {arquivo_novo}")
+                        # Fim da operacao
+                        navegador.close()
+                        time.sleep(1)
+                        navegador.switch_to.window(todas_abas[0])
                         navegador.quit()
-                    continue
-            
-            
+                        break
+
+
+                    except NoSuchElementException:
+                        if cont == len(linhas):
+                            navegador.quit()
+                        continue
+            except TimeoutException:
+                break
+                
+                
 
 
 

@@ -1,10 +1,10 @@
-Unused/
+unused/
 venv/
-Bots
 __pycache__/
 *.pyc
+*.zip
+*.pdf
 senhas_operadoras.xlsx
 OBSERVACOES.txt
-Senhas/
-Hapvida Arquivo/
-Download/
+senhas/
+arquivos_hapvida/

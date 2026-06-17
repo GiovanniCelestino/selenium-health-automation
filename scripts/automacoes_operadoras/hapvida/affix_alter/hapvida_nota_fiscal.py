@@ -5,7 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 caminho_absoluto = os.path.abspath(os.curdir)
 sys.path.insert(0, caminho_absoluto)
-from Senhas.login_hapvida import realizarLogin
+from senhas.login_hapvida import realizarLogin
 import time
 import json
 import shutil
@@ -79,7 +79,7 @@ def salvar_arquivo(tipo_contrato):
 
         # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
         # Caso nao existir, cria
-        pasta_destino = os.path.join("Affix", "Operadoras", "Hapvida", "Mensalidade_Copart", "Hapvida Arquivo",f"{dia_venc}_{mes_venc}_{ano_venc}") 
+        pasta_destino = os.path.join("dados", "arquivos_direcionados", "operadoras", "hapvida_arquivos", "affix_alter_arquivos",f"{dia_venc}_{mes_venc}_{ano_venc}") 
         os.makedirs(pasta_destino, exist_ok=True)
 
         shutil.move(arquivo_novo, pasta_destino)
@@ -109,7 +109,7 @@ for entidade in lista_entidades:
         #edge_options.add_argument("--kiosk-printing")
 
         # Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
-        pasta_download = os.path.join(os.getcwd(), "Download")
+        pasta_download = os.path.join(os.getcwd(), "dados","download_principal")
         os.makedirs(pasta_download, exist_ok=True)
 
         prefs = {

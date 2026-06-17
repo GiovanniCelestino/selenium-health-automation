@@ -5,7 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 caminho_absoluto = os.path.abspath(os.curdir)
 sys.path.insert(0, caminho_absoluto)
-from Senhas.login_hapvida import realizarLogin
+from senhas.login_hapvida import realizarLogin
 import time
 import json
 import shutil
@@ -66,7 +66,7 @@ edge_options = Options()
 #edge_options.add_argument("--kiosk-printing")
 
 # Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
-pasta_download = os.path.join(os.getcwd(), "Download")
+pasta_download = os.path.join(os.getcwd(), "dados","download_principal")
 os.makedirs(pasta_download, exist_ok=True)
 
 prefs = {
@@ -100,7 +100,7 @@ cnpj = "Indefinido"
 #lista de contratos
 
 # Carregr arquivo
-caminho_arquivo = 'Senhas/senhas_operadoras.xlsx'
+caminho_arquivo = 'senhas/senhas_operadoras.xlsx'
 wb = openpyxl.load_workbook(caminho_arquivo)
 aba_hapvida = wb['teste']
 
