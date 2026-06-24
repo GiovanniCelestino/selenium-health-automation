@@ -18,6 +18,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.edge.options import Options
 from pathlib import Path
 from selenium.common.exceptions import TimeoutException
+from scripts.imprime_arquivos.config_impressao import *
 
 
 
@@ -59,7 +60,7 @@ ano_venc = input('Ano(AAAA): ')
 data_completa_venc = f"{dia_venc}/{mes_venc}/{ano_venc}"
 
 
-# Carregr arquivo
+# Carregar arquivo
 caminho_arquivo = 'senhas/senhas_operadoras.xlsx'
 wb = openpyxl.load_workbook(caminho_arquivo)
 aba_hapvida = wb[aba_excel]
@@ -84,7 +85,11 @@ for row in range(1, aba_hapvida.max_row + 1):
         data_download = f"{dia_venc}.{mes_venc}.{ano_venc}"
         #Verifica se existe o contrato na pasta
         pasta_arquivos_baixados = os.path.join(os.getcwd(), f"dados\\arquivos_direcionados\\operadoras\\hapvida_arquivos\\affix_alter_arquivos\\{dia_venc}_{mes_venc}_{ano_venc}")
-
+        
+        #Verifica se existe a pasta de destino, caso contrário cria.
+        pasta_destino = os.path.join("dados", "arquivos_direcionados", "operadoras", "hapvida_arquivos", "affix_alter_arquivos",f"{dia_venc}_{mes_venc}_{ano_venc}") 
+        os.makedirs(pasta_destino, exist_ok=True)
+        
         #Checa se o contrato já foi baixado
         for f in os.listdir(pasta_arquivos_baixados):
             if data_download in f and contrato in f and tipo_contrato in f:
@@ -99,39 +104,13 @@ for row in range(1, aba_hapvida.max_row + 1):
             # Identificacao de pastas na arquitetura do projeto (includes)
             sys.path.insert(0, caminho_absoluto)
 
-            
-            # CONFIGURAÇÃO DE IMPRESSÃO (Obrigatório vir antes de iniciar o Chrome)
-            #PREFERENCIA NAVEGADOR
-            #chrome_options = Options()
-            #chrome_options.add_argument('--kiosk-printing') # Ativa a impressão sem perguntas
-            edge_options = Options()
-            edge_options.add_argument("--kiosk-printing")
-            
-            
-
-            # Configura o destino como "Salvar como PDF" e cria pasta "download_principa" nas pasta "dados" caso não exista
-            pasta_download = os.path.join(os.getcwd(), "dados","download_principal")
-            os.makedirs(pasta_download, exist_ok=True)
-
-            prefs = {
-                "printing.print_preview_sticky_settings.appState": json.dumps({
-                    "recentDestinations": [{"id": "Save as PDF", "origin": "local", "account": ""}],
-                    "selectedDestinationId": "Save as PDF",
-                    "version": 2
-                }),
-                "savefile.default_directory": pasta_download
-            }
-            
-            
-            #PREFERENCIA NAVEGADOR
-            #chrome_options.add_experimental_option('prefs', prefs)
-            edge_options.add_experimental_option('prefs', prefs)
-            
+            # Chama função para configuração de impressão
+            config_edge, pasta_download = ativa_impressao()
 
             # INSTANCIANDO O NAVEGADOR COM AS OPÇÕES
             #PREFERENCIA NAVEGADOR
             #navegador = webdriver.Chrome(options=chrome_options)
-            navegador = webdriver.Edge(options=edge_options)
+            navegador = webdriver.Edge(options=config_edge)
 
 
 
@@ -156,9 +135,6 @@ for row in range(1, aba_hapvida.max_row + 1):
             navegador.maximize_window()
 
             # REALIZA LOGIN USANDO FUNCAO DE FORA (realizarLogin())
-
-            #lista de contratos
-
             realizarLogin(navegador, contrato, tipo_arquivo, "entidade", "cnpj")
 
             try:
@@ -174,16 +150,6 @@ for row in range(1, aba_hapvida.max_row + 1):
             
                 time.sleep(2)
                 
-                """# 3. Localizar o primeiro checkbox
-                xpath_checkbox_mestre = "//div[contains(@class, 'tableHeaderCell')]//button[@role='checkbox']"
-                
-                checkbox_pai = WebDriverWait(navegador, 15).until(
-                    EC.presence_of_element_located((By.XPATH, xpath_checkbox_mestre))
-                )
-                
-                # 4. Forçar com javascript o clique
-                navegador.execute_script("arguments[0].click();", checkbox_pai)"""
-
 
             except Exception as e:
                 print(f"Erro durante a execução: {e}")
@@ -274,10 +240,6 @@ for row in range(1, aba_hapvida.max_row + 1):
 
 
                         # Mover arquivo renomeado para a pasta de vencimento da operadora (Hapvida Arquivo)
-                        # Caso nao existir, cria
-                        pasta_destino = os.path.join("dados", "arquivos_direcionados", "operadoras", "hapvida_arquivos", "affix_alter_arquivos",f"{dia_venc}_{mes_venc}_{ano_venc}") 
-                        os.makedirs(pasta_destino, exist_ok=True)
-
                         shutil.move(arquivo_novo, pasta_destino)
                         print(f"BAIXADO: {arquivo_novo}")
                         # Fim da operacao

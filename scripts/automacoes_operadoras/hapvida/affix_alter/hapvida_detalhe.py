@@ -17,24 +17,38 @@ from datetime import datetime
 import openpyxl
 #Excessoes Try/Except
 from selenium.common.exceptions import NoSuchElementException
+from scripts.imprime_arquivos.config_impressao import *
 
 # MENU PRINCIPAL 
 print('===== BEM VINDO AO GSYSTEM =====:\n')
-print('===== BAIXA REFERENTE AOS DETALHES (AFFIX) =====:\n')
+print('===== BAIXA REFERENTE AOS BOLETOS HAPVIDA =====:\n')
 print('Responsável: Giovanni.Souza')
+
+opc_opr = input("INFORME A OPERADORA:\n[1]Affix\n[2]Alter\n")
+if opc_opr == "1":
+    operadora = "AFFIX"
+    aba_excel = "Hapvida Affix"
+
+elif opc_opr == "2":
+    operadora = "ALTER"
+    aba_excel = "Hapvida Alter"
+
+
+opc_tipo_contrato = input("INFORME O TIPO DE CONTRATO:\n[1]MENSALIDADE\n[2]COPART\n")
+if opc_tipo_contrato == "2":
+    #O que vai na descrição
+    tipo_contrato = "COPART"
+    tipo_contrato_cond = "S"
+
+elif opc_tipo_contrato == "1":
+    tipo_contrato = "MENSALIDADE"
+    tipo_contrato_cond = "N"
+
 
 print("INFORME A DATA DE VENCIMENTO DESEJADA SEGUIDA DO DIA, MES E ANO:\n")
 dia_venc = input('Dia(DD): ')
 mes_venc = input('Mes(MM): ')
 ano_venc = input('Ano(AAAA): ')
-
-opc_copart = input("\nDIGITE UMA DAS OPÇÕES ABAIXO:\n[1]Copart\n[2]Mensalidade\n")
-if opc_copart == "1":
-    tipo_contrato = "S"
-
-elif opc_copart == "2":
-    tipo_contrato = "N"
-
 
 
 #formato data venc
@@ -59,33 +73,11 @@ caminho_absoluto = os.path.abspath(os.curdir)
 # Identificacao de pastas na arquitetura do projeto (includes)
 sys.path.insert(0, caminho_absoluto)
 
-# CONFIGURAÇÃO DE IMPRESSÃO (Obrigatório vir antes de iniciar o Chrome)
-#chrome_options = Options()
-#chrome_options.add_argument('--kiosk-printing') # Ativa a impressão sem perguntas
-edge_options = Options()
-#edge_options.add_argument("--kiosk-printing")
-
-# Configura o destino como "Salvar como PDF" e cria pasta download na pasta projeto
-pasta_download = os.path.join(os.getcwd(), "dados","download_principal")
-os.makedirs(pasta_download, exist_ok=True)
-
-prefs = {
-    "download.default_directory": pasta_download, # Onde o arquivo vai cair
-    "download.prompt_for_download": False,                # Desativa a pergunta "Onde deseja salvar"
-    "download.directory_upgrade": True,
-    "plugins.always_open_pdf_externally": True,           # Força o PDF a baixar em vez de abrir no navegador
-    "safebrowsing.enabled": True
-}
-
-#PREFERENCIA NAVEGADOR
-#chrome_options.add_experimental_option('prefs', prefs)
-edge_options.add_experimental_option('prefs', prefs)
-
-
+config_edge, pasta_download = ativa_impressao()
 # INSTANCIANDO O NAVEGADOR COM AS OPÇÕES
 #PREFERENCIA NAVEGADOR
 #navegador = webdriver.Chrome(options=chrome_options)
-navegador = webdriver.Edge(options=edge_options)
+navegador = webdriver.Edge(options=config_edge)
 
 
 # DEFININDO VARIAVEIS
@@ -102,7 +94,7 @@ cnpj = "Indefinido"
 # Carregr arquivo
 caminho_arquivo = 'senhas/senhas_operadoras.xlsx'
 wb = openpyxl.load_workbook(caminho_arquivo)
-aba_hapvida = wb['teste']
+aba_hapvida = wb["teste"]
 
         # MANIPULAÇÃO PLANILHA
 
@@ -124,7 +116,7 @@ for row in range(1, aba_hapvida.max_row + 1):
         plan_tipo_cont = str(aba_hapvida[f'F{row}'].value)
 
     
-    if dia_venc == plan_venc and plan_admn_edit == "AFFIX" and tipo_contrato == plan_tipo_cont:
+    if dia_venc == plan_venc and plan_admn_edit == "AFFIX" and tipo_contrato_cond == plan_tipo_cont:
         cnpj = aba_hapvida[f'D{row}'].value
         
         
@@ -144,106 +136,178 @@ for row in range(1, aba_hapvida.max_row + 1):
             arquivo_anterior = navegador.find_element(By.XPATH, "//a[text()='BAIXAR ARQUIVOS - DOWNLOAD (Anterior)']")
             arquivo_anterior.click()
 
-            if tipo_contrato == "S":
 
-                campo_pesquisa = navegador.find_element(By.XPATH, "//input[@type='search']")
+
+            campo_pesquisa = navegador.find_element(By.XPATH, "//input[@type='search']")
                 
-                #limpa registros do campo 
-                campo_pesquisa.clear()
+            #limpa registros do campo 
+            campo_pesquisa.clear()
 
-                campo_pesquisa.send_keys(contrato)
-                #procurar pelo contrato específico:
-                linhas = navegador.find_elements(By.XPATH, "//tbody/tr")               
+            campo_pesquisa.send_keys(contrato)
+            #procurar pelo contrato específico:
+            linhas = navegador.find_elements(By.XPATH, "//tbody/tr")               
+            cont_linhas = len(linhas) - 5
 
-                for linha in linhas:
-                    texto_da_linha = linha.text
+            arquivo_csv = False
+            arquivo_pdf = False
+            cont = 0
+            id_proximo = navegador.find_element(By.ID, "table_id_next")
+            classe_proximo = id_proximo.get_attribute("class")
+            for i in range(len(linhas)):
+                
+                linha_atual = navegador.find_element(By.XPATH, f"//tbody/tr[{i+1}]")
 
-                    try:
-                        #Tenta pegar o período da linha atual
-                        observacao = linha.find_element(By.XPATH, "./td[4]").text  
-                        data_periodo_contrato = linha.find_element(By.XPATH, "./td[2]").text   
-                        data_inicio = data_periodo_contrato[0:10]
-                        data_fim = data_periodo_contrato[15:25]
+                #Checa se ambos os arquivos já foram baixados
+                if arquivo_csv and arquivo_pdf:
+                    break
+                
+                texto_da_linha = linha_atual.text
 
-                        if "/" in data_fim and data_inicio: 
-                            data_inicio_convert = datetime.strptime(data_inicio, "%d/%m/%Y").date()
-                            data_fim_convert = datetime.strptime(data_fim, "%d/%m/%Y").date()
-            
+                try:
+                    if cont == cont_linhas:
+                        if classe_proximo == "paginate_button next":
+                                navegador.find_element(By.ID, "table_id_next").click()
+                        #Se o botão próximo estiver inativo, encerra o for
+                        elif classe_proximo == "paginate_button next disabled":
+                                #navegador.find_element(By.XPATH, ".//*[@id='table_id_paginate']/span/a[1]").click()
+                                break
+                           
 
-                        if (data_completa_convert >= data_inicio_convert and data_completa_convert <= data_fim_convert) and ("Remessa" in observacao):
+                    #Tenta pegar o período da linha atual
+                    observacao = linha_atual.find_element(By.XPATH, "./td[4]").text  
+                    data_periodo_contrato = linha_atual.find_element(By.XPATH, "./td[2]").text   
+                    data_inicio = data_periodo_contrato[0:10]
+                    data_fim = data_periodo_contrato[15:25]
+
+                    if "/" in data_fim and data_inicio: 
+                        data_inicio_convert = datetime.strptime(data_inicio, "%d/%m/%Y").date()
+                        data_fim_convert = datetime.strptime(data_fim, "%d/%m/%Y").date()
+        
+                    if tipo_contrato_cond == "S":
+                        tipo_contrato_site = "Remessa" in observacao
+                    elif tipo_contrato_cond == "N":
+                        tipo_contrato_site = "Remessa" not in observacao
+
+                    cont +=1
+
+
+
+                    
+
+                    
+                    if (data_completa_convert >= data_inicio_convert and data_completa_convert <= data_fim_convert) and (tipo_contrato_site):
+                        
+                        if "CSV" in texto_da_linha:
+                            # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
                             
-                            continuar_paginacao_csv = True
-                            continuar_paginacao_pdf = True
+                            arquivo_csv = linha_atual.find_element(By.XPATH, "./td[1]/small/a")
+                            arquivo_csv.click()
+                            time.sleep(2)
+                            baixar_csv = navegador.find_element(By.XPATH, ".//a[text()='clique aqui']")
+                            baixar_csv.click()
+                            navegador.find_element(By.XPATH, ".//a[text()='Voltar']").click()
+                            arquivo_csv = True
+
+                        if "PDF" in texto_da_linha:
+                            # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
+                            
+                            arquivo_csv = linha_atual.find_element(By.XPATH, "./td[1]/small/a")
+                            arquivo_csv.click()
+                            time.sleep(2)
+                            baixar_csv = navegador.find_element(By.XPATH, ".//a[text()='clique aqui']")
+                            baixar_csv.click()
+                            navegador.find_element(By.XPATH, ".//a[text()='Voltar']").click()
+                            arquivo_pdf = True
 
 
 
-                            #OBSERVAÇÃO. ASSIM QUE ENTRAR NA PRÓXIMA PÁGINA, ELE DEVE RETORNAR AO PRIMEIRO FOR, PARA CHECAR SE EXISTE A DATA E A OBSERVAÇÃO.
 
 
-                            # --- TRATAMENTO DO CSV ---
-                            while continuar_paginacao_csv:
-                                id_proximo = navegador.find_element(By.ID, "table_id_next")
-                                classe_proximo = id_proximo.get_attribute("class")
 
-                                if "CSV" in texto_da_linha:
-                                    # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
-                                    
-                                    arquivo_csv = linha.find_element(By.XPATH, "./td[1]/small/a")
-                                    arquivo_csv.click()
-                                    time.sleep(2)
-                                    baixar_csv = navegador.find_element(By.XPATH, ".//a[text()='clique aqui']")
-                                    baixar_csv.click()
-                                    navegador.find_element(By.XPATH, ".//a[text()='Voltar']").click()
-                                    continuar_paginacao_csv = False
+
+
+
+
+
+
+
+
+
+
+
+
+                        """continuar_paginacao_csv = True
+                        continuar_paginacao_pdf = True
+
+
+
+                        #OBSERVAÇÃO. ASSIM QUE ENTRAR NA PRÓXIMA PÁGINA, ELE DEVE RETORNAR AO PRIMEIRO FOR, PARA CHECAR SE EXISTE A DATA E A OBSERVAÇÃO.
+
+
+                        # --- TRATAMENTO DO CSV ---
+                        while continuar_paginacao_csv:
+                            id_proximo = navegador.find_element(By.ID, "table_id_next")
+                            classe_proximo = id_proximo.get_attribute("class")
+
+                            if "CSV" in texto_da_linha:
+                                # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
                                 
-                                elif classe_proximo == "paginate_button next":
-                                    navegador.find_element(By.ID, "table_id_next").click()
-
-                                elif classe_proximo == "paginate_button next disabled":
-                                    navegador.find_element(By.XPATH, ".//*[@id='table_id_paginate']/span/a[1]").click()
-                                    continuar_paginacao_csv = False
-
-
-
-
-                            while continuar_paginacao_pdf:
-                                id_proximo = navegador.find_element(By.ID, "table_id_next")
-                                classe_proximo = id_proximo.get_attribute("class")
-                                campo_pesquisa = navegador.find_element(By.XPATH, "//input[@type='search']")
-                                #limnpa registros do campo 
-                                campo_pesquisa.clear()
-                                campo_pesquisa.send_keys(contrato)
-
-                                if "PDF" in texto_da_linha:
-                                    # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
-                                    
-                                    arquivo_csv = linha.find_element(By.XPATH, "./td[1]/small/a")
-                                    arquivo_csv.click()
-                                    time.sleep(2)
-                                    baixar_csv = navegador.find_element(By.XPATH, ".//a[text()='clique aqui']")
-                                    baixar_csv.click()
-                                    navegador.find_element(By.XPATH, ".//a[text()='Voltar']").click()
+                                arquivo_csv = linha.find_element(By.XPATH, "./td[1]/small/a")
+                                arquivo_csv.click()
+                                time.sleep(2)
+                                baixar_csv = navegador.find_element(By.XPATH, ".//a[text()='clique aqui']")
+                                baixar_csv.click()
+                                navegador.find_element(By.XPATH, ".//a[text()='Voltar']").click()
                                 
-                                elif classe_proximo == "paginate_button next":
-                                    navegador.find_element(By.ID, "table_id_next").click()
+                            
+                            elif classe_proximo == "paginate_button next":
+                                navegador.find_element(By.ID, "table_id_next").click()
 
-                                elif classe_proximo == "paginate_button next disabled":
-                                    navegador.find_element(By.XPATH, ".//*[@id='table_id_paginate']/span/a[1]").click()
-                                    continuar_paginacao_pdf = False
-                                    
+                            elif classe_proximo == "paginate_button next disabled":
+                                navegador.find_element(By.XPATH, ".//*[@id='table_id_paginate']/span/a[1]").click()
+                                continuar_paginacao_csv = False
 
 
-                            # --- TRATAMENTO DO PDF ---
+
+
+                        while continuar_paginacao_pdf:
+                            id_proximo = navegador.find_element(By.ID, "table_id_next")
+                            classe_proximo = id_proximo.get_attribute("class")
+                            campo_pesquisa = navegador.find_element(By.XPATH, "//input[@type='search']")
+                            #limnpa registros do campo 
+                            campo_pesquisa.clear()
+                            campo_pesquisa.send_keys(contrato)
+
                             if "PDF" in texto_da_linha:
                                 # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
-                                arquivo_pdf = linha.find_element(By.XPATH, ".//a[text()='PDF']")
-                                arquivo_pdf.click()
+                                
+                                arquivo_csv = linha.find_element(By.XPATH, "./td[1]/small/a")
+                                arquivo_csv.click()
                                 time.sleep(2)
+                                baixar_csv = navegador.find_element(By.XPATH, ".//a[text()='clique aqui']")
+                                baixar_csv.click()
+                                navegador.find_element(By.XPATH, ".//a[text()='Voltar']").click()
+                            
+                            elif classe_proximo == "paginate_button next":
+                                navegador.find_element(By.ID, "table_id_next").click()
 
-                    except NoSuchElementException:
-                        print("Linha ignorada(não possui a coluna de período).")
-                        continue
+                            elif classe_proximo == "paginate_button next disabled":
+                                navegador.find_element(By.XPATH, ".//*[@id='table_id_paginate']/span/a[1]").click()
+                                continuar_paginacao_pdf = False
+                                
 
+
+                        # --- TRATAMENTO DO PDF ---
+                        if "PDF" in texto_da_linha:
+                            # Trocamos 'navegador' por 'linha' e adicionamos o '.' no início do XPath
+                            arquivo_pdf = linha.find_element(By.XPATH, ".//a[text()='PDF']")
+                            arquivo_pdf.click()
+                            time.sleep(2)"""
+
+                except NoSuchElementException:
+                    print("Linha ignorada(não possui a coluna de período).")
+                    continue
+            print(cont)
 
         else:
             arquivo_novo = navegador.find_element(By.XPATH, "//a[text()='BAIXAR ARQUIVOS - DOWNLOAD (Novo)']")
